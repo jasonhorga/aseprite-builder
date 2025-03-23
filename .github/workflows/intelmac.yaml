@@ -33,7 +33,7 @@ jobs:
       - name: 安装基础依赖
         run: |
           brew update --quiet
-          brew install cmake ninja pkg-config libwebp giflib
+          brew install cmake ninja
 
       - name: 获取源码及子模块
         uses: actions/checkout@v4
