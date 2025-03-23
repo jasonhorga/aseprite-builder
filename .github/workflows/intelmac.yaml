@@ -9,7 +9,7 @@ on:
         default: 'v1.3.13'
 
 env:
-  SKIA_VERSION: m124-08a5439a6b  # 与官方指定版本严格同步[1](@ref)
+  SKIA_VERSION: m102-861e4743af  # 与官方指定版本严格同步[1](@ref)
   BUILD_TYPE: RelWithDebInfo
   DEPLOYMENT_TARGET: '10.15'      # 提升最低兼容版本[1](@ref)
   SKIA_PATH: ${{ github.workspace }}/skia
