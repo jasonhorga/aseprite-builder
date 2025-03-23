@@ -54,7 +54,7 @@ jobs:
         with:
           repository: aseprite/aseprite
           ref: ${{ github.event.inputs.version }}
-          submodules: true
+          submodules: recursive
 
       - name: 配置Skia环境
         if: steps.cache.outputs.cache-hit != 'true'
