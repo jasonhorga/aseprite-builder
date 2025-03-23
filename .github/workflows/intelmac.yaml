@@ -64,6 +64,7 @@ jobs:
           curl -L $SKIA_URL -o skia.zip
           unzip -q skia.zip -d skia
           rm skia.zip
+          export laf_backend=skia
 
       - name: 生成构建配置
         run: |
