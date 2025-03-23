@@ -61,7 +61,7 @@ jobs:
             aseprite.app data
           
       - name: 上传制品
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Aseprite-${{ inputs.version }}-Intel
           path: build/bin/Aseprite-*.zip
