@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    runs-on: vmactions/free-mac    # 加速依赖安装[1](@ref)
+    runs-on: macos-13    # 加速依赖安装[1](@ref)
     strategy:
       matrix:
         arch: [x86_64]            # 强制Intel架构[1](@ref)
