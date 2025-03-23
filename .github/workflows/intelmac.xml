@@ -1,0 +1,67 @@
+name: Build Aseprite on Intel Mac
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Aseprite版本号 (如v1.3.13)'
+        required: true
+        default: 'v1.3.13'
+
+env:
+  BUILD_TYPE: RelWithDebInfo
+  DEPLOYMENT_TARGET: '10.9'  # 兼容旧系统[1](@ref)
+
+jobs:
+  build:
+    runs-on: macos-12  # 专为Intel架构选择Runner
+    strategy:
+      matrix:
+        arch: [x86_64]  # 明确指定Intel架构[1](@ref)
+    steps:
+      - name: 安装基础依赖
+        run: |
+          brew update
+          brew install cmake ninja wget
+          brew install freetype harfbuzz
+
+      - name: 获取源码
+        uses: actions/checkout@v4
+        with:
+          repository: aseprite/aseprite
+          ref: ${{ inputs.version }}
+
+      - name: 配置Skia环境
+        run: |
+          SKIA_URL="https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-Linux-Release-x64.zip"
+          wget $SKIA_URL -O skia.zip
+          unzip skia.zip -d skia
+          echo "SKIA_PATH=$(pwd)/skia" >> $GITHUB_ENV
+
+      - name: 生成构建配置
+        run: |
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ env.DEPLOYMENT_TARGET }} \
+            -DSKIA_DIR=${{ env.SKIA_PATH }} \
+            -DSKIA_LIBRARY_DIR=${{ env.SKIA_PATH }}/out/Release-x64 \
+            -G Ninja
+
+      - name: 编译二进制
+        run: |
+          cd build
+          ninja aseprite
+
+      - name: 生成便携包
+        run: |
+          cd build/bin
+          zip -r Aseprite-${{ inputs.version }}-macOS-Intel.zip \
+            aseprite.app data
+          
+      - name: 上传制品
+        uses: actions/upload-artifact@v3
+        with:
+          name: Aseprite-${{ inputs.version }}-Intel
+          path: build/bin/Aseprite-*.zip
