@@ -9,38 +9,50 @@ on:
         default: 'v1.3.13'
 
 env:
+  SKIA_VERSION: m124-08a5439a6b  # 与官方指定版本严格同步[1](@ref)
   BUILD_TYPE: RelWithDebInfo
-  DEPLOYMENT_TARGET: '10.9'  # 兼容旧系统[1](@ref)
+  DEPLOYMENT_TARGET: '10.15'      # 提升最低兼容版本[1](@ref)
+  SKIA_PATH: ${{ github.workspace }}/skia
 
 jobs:
   build:
-    runs-on: macos-13  # 专为Intel架构选择Runner
+    runs-on: vmactions/free-mac    # 加速依赖安装[1](@ref)
     strategy:
       matrix:
-        arch: [x86_64]  # 明确指定Intel架构[1](@ref)
+        arch: [x86_64]            # 强制Intel架构[1](@ref)
+
     steps:
+      - name: 缓存构建文件
+        uses: actions/cache@v3
+        with:
+          path: |
+            build
+            skia
+          key: ${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/CMakeLists.txt') }}
+
       - name: 安装基础依赖
         run: |
-          brew update
-          brew install cmake ninja wget
-          brew install freetype harfbuzz
+          brew update --quiet
+          brew install cmake ninja pkg-config libwebp giflib
 
-      - name: 获取源码
+      - name: 获取源码及子模块
         uses: actions/checkout@v4
         with:
           repository: aseprite/aseprite
-          ref: ${{ inputs.version }}
+          ref: ${{ github.event.inputs.version }}
+          submodules: recursive    # 关键：获取skia子模块[1](@ref)
 
       - name: 配置Skia环境
+        if: steps.cache.outputs.cache-hit != 'true'  # 缓存未命中时执行
         run: |
-          SKIA_URL="https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-macOS-Release-x64.zip"
-          wget $SKIA_URL -O skia.zip
-          unzip skia.zip -d skia
+          SKIA_URL="https://github.com/aseprite/skia/releases/download/${{ env.SKIA_VERSION }}/Skia-macOS-Release-x64.zip"
+          wget -q $SKIA_URL -O skia.zip
+          unzip -q skia.zip -d skia
           echo "SKIA_PATH=$(pwd)/skia" >> $GITHUB_ENV
 
       - name: 生成构建配置
         run: |
-          mkdir build && cd build
+          mkdir -p build && cd build
           cmake .. \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
@@ -52,16 +64,17 @@ jobs:
       - name: 编译二进制
         run: |
           cd build
-          ninja aseprite
+          ninja -j4 aseprite  # 启用并行编译加速[3](@ref)
 
-      - name: 生成便携包
+      - name: 生成带构建ID的便携包
         run: |
           cd build/bin
-          zip -r Aseprite-${{ inputs.version }}-macOS-Intel.zip \
+          zip -qr Aseprite-${{ github.event.inputs.version }}-b${{ github.run_id }}-macOS-Intel.zip \
             aseprite.app data
-          
-      - name: 上传制品
-        uses: actions/upload-artifact@v4
+
+      - name: 上传制品到Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')  # 仅标签触发时发布
         with:
-          name: Aseprite-${{ inputs.version }}-Intel
-          path: build/bin/Aseprite-*.zip
+          tag_name: ${{ github.ref }}
+          files: build/bin/Aseprite-*.zip
