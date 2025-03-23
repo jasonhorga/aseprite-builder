@@ -9,35 +9,21 @@ on:
         default: 'v1.3.13'
 
 env:
-  SKIA_VERSION: m102-861e4743af
+  SKIA_VERSION: m102-861e4743af  # 与官方指定版本严格同步[1](@ref)
   BUILD_TYPE: RelWithDebInfo
-  DEPLOYMENT_TARGET: '10.15'
+  DEPLOYMENT_TARGET: '10.15'      # 提升最低兼容版本[1](@ref)
   SKIA_PATH: ${{ github.workspace }}/skia
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      release-tag: ${{ steps.create-release.outputs.tag }}
-    steps:
-      - name: 生成唯一Release标签
-        id: create-release
-        run: |
-          timestamp=$(date +%Y%m%d-%H%M%S)
-          tag="build-${{ github.event.inputs.version }}-$timestamp"
-          echo "tag=$tag" >> $GITHUB_OUTPUT
-
   build:
-    runs-on: macos-13
-    needs: [create-release]
+    runs-on: macos-13    # 加速依赖安装[1](@ref)
     strategy:
       matrix:
-        arch: [x86_64]
+        arch: [x86_64]            # 强制Intel架构[1](@ref)
 
     steps:
       - name: 缓存构建文件
         uses: actions/cache@v3
-        id: cache
         with:
           path: |
             build
@@ -48,7 +34,6 @@ jobs:
         run: |
           brew update --quiet
           brew install cmake ninja
-
       - name: 获取源码及子模块
         uses: actions/checkout@v4
         with:
@@ -63,7 +48,6 @@ jobs:
           wget -q $SKIA_URL -O skia.zip
           unzip -q skia.zip -d skia
           echo "SKIA_PATH=$(pwd)/skia" >> $GITHUB_ENV
-      
       - name: 生成构建配置
         run: |
           mkdir -p build && cd build
@@ -74,21 +58,18 @@ jobs:
             -DSKIA_DIR=${{ env.SKIA_PATH }} \
             -DSKIA_LIBRARY_DIR=${{ env.SKIA_PATH }}/out/Release-x64 \
             -G Ninja
-
       - name: 编译二进制
         run: |
           cd build
-          ninja aseprite -j $(sysctl -n hw.ncpu)
-
-      - name: 生成便携包
+          ninja -j4 aseprite  # 启用并行编译加速[3](@ref)
+      - name: 生成带构建ID的便携包
         run: |
           cd build/bin
-          zip -qr Aseprite-${{ github.event.inputs.version }}-${{ needs.create-release.outputs.release-tag }}-macOS-Intel.zip \
+          zip -qr Aseprite-${{ github.event.inputs.version }}-b${{ github.run_id }}-macOS-Intel.zip \
             aseprite.app data
-
-      - name: 上传Release资产
+      - name: 上传制品到Release
         uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')  # 仅标签触发时发布
         with:
-          tag_name: ${{ needs.create-release.outputs.release-tag }}
-          files: |
-            build/bin/Aseprite-${{ github.event.inputs.version }}-${{ needs.create-release.outputs.release-tag }}-macOS-Intel.zip
+          tag_name: ${{ github.ref }}
+          files: build/bin/Aseprite-*.zip
