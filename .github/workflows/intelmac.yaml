@@ -10,7 +10,7 @@ on:
 
 env:
   BUILD_TYPE: RelWithDebInfo
-  DEPLOYMENT_TARGET: '13.0'  # 兼容旧系统[1](@ref)
+  DEPLOYMENT_TARGET: '10.9'  # 兼容旧系统[1](@ref)
 
 jobs:
   build:
