@@ -67,9 +67,9 @@ jobs:
           cd build/bin
           zip -qr Aseprite-${{ github.event.inputs.version }}-b${{ github.run_id }}-macOS-Intel.zip \
             aseprite.app data
-      - name: 上传制品到Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')  # 仅标签触发时发布
+      - name: Upload vpk
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.ref }}
-          files: build/bin/Aseprite-*.zip
+          name: ${{ github.event.inputs.version }}-b${{ github.run_id }}-macOS-Intel
+          path: build/bin/Aseprite-${{ github.event.inputs.version }}-b${{ github.run_id }}-macOS-Intel.zip
+      
