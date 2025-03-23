@@ -47,7 +47,7 @@ jobs:
       - name: 安装基础依赖
         run: |
           brew update --quiet
-          brew install cmake ninja
+          brew install cmake ninja freetype harfbuzz  # 新增依赖
 
       - name: 获取源码及子模块
         uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
           ref: ${{ github.event.inputs.version }}
           submodules: recursive
 
-      - name: 配置Skia环境
+      - name: 配置Skia环境 (关键修复)
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p skia
@@ -64,9 +64,15 @@ jobs:
           curl -L $SKIA_URL -o skia.zip
           unzip -q skia.zip -d skia
           rm skia.zip
-          export laf_backend=skia
+          
+          # 修复库文件路径结构
+          mkdir -p skia/out/Release-x64
+          mv skia/*.a skia/out/Release-x64/  # 移动静态库到正确位置
 
-      - name: 生成构建配置
+          # 验证路径结构
+          ls -lR skia/out/Release-x64/
+
+      - name: 生成构建配置 (修复CMake参数)
         run: |
           mkdir -p build && cd build
           cmake .. \
@@ -75,6 +81,10 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ env.DEPLOYMENT_TARGET }} \
             -DSKIA_DIR=${{ env.SKIA_PATH }} \
             -DSKIA_LIBRARY_DIR=${{ env.SKIA_PATH }}/out/Release-x64 \
+            -DFREETYPE_LIBRARY_RELEASE=$(brew --prefix freetype)/lib/libfreetype.dylib \
+            -DFREETYPE_INCLUDE_DIRS=$(brew --prefix freetype)/include/freetype2 \
+            -DHARFBUZZ_LIBRARY_RELEASE=$(brew --prefix harfbuzz)/lib/libharfbuzz.dylib \
+            -DHARFBUZZ_INCLUDE_DIRS=$(brew --prefix harfbuzz)/include/harfbuzz \
             -G Ninja
 
       - name: 编译二进制
