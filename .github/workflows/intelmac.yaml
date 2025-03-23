@@ -72,9 +72,10 @@ jobs:
           zip -qr Aseprite-${{ github.event.inputs.version }}-b${{ github.run_id }}-macOS-Intel.zip \
             aseprite.app data
 
-      - name: 上传制品到Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')  # 仅标签触发时发布
+      - name: Upload release
+        uses: svenstaro/upload-release-action@v2
         with:
-          tag_name: ${{ github.ref }}
-          files: build/bin/Aseprite-*.zip
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/bin/Aseprite-${{ github.event.inputs.version }}-b${{ github.run_id }}-macOS-Intel.zip
+          asset_name: Aseprite-${{ github.event.inputs.version }}-b${{ github.run_id }}-macOS-Intel.zip
+          tag: ${{ needs.create-release.outputs.release-tag }}
